@@ -5,9 +5,13 @@
 .fm-container {
     background-color: #F4F1ED;
 }
-
 .fm-container .fm-header .breadcrumbs {
-    color: #000000;
+    color: #428BCA;
+    background-color: #F5F5F5;
+}
+
+.fm-container .fm-header .buttons-panel {
+    margin: 0px;
 }
 
 .fm-container .fm-splitter .splitter-bar-vertical {
@@ -21,12 +25,22 @@
 }
 
 .fm-container .fm-fileinfo {
-    border: 1px solid #ccc;
     background-color: #fff;
+    color: #444444
 }
+.fm-container .fm-fileinfo th {
+    background-color: #fff;
+    color: #666666
+}
+
+.fm-container .fm-fileinfo td {
+    height: 38px;
+}
+
 
 .fm-container .fm-preview .fm-preview-title h1 {
     color: #8fabc6;
+    float: none;
 }
 
 .fm-container .fm-preview .fm-preview-details td {
