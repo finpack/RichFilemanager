@@ -24,6 +24,7 @@ module.exports = function(grunt) {
                 files: {
                     'target/filemanager.min.js': ['src/js/filemanager.js'],
                     'target/libs-main.js': [
+                        'libs/sammy.min.js',
                         'libs/jquery-1.11.3.min.js',
                         'libs/jquery-ui/jquery-ui.js',
                         'libs/jquery-browser.js',
@@ -31,15 +32,8 @@ module.exports = function(grunt) {
                         'libs/jquery-mousewheel/jquery.mousewheel.min.js',
                         'libs/jquery.splitter/dist/jquery-splitter.js',
                         'libs/alertify.js/dist/js/alertify.js',
-                        'libs/jquery.fileDownload/jquery.fileDownload.js',
                         'libs/javascript-templates/js/tmpl.min.js',
                         'libs/toast/lib/toast.min.js',
-                        'libs/cldrjs/cldr.js',
-                        'libs/cldrjs/cldr/event.js',
-                        'libs/cldrjs/cldr/supplemental.js',
-                        'libs/globalizejs/globalize.js',
-                        'libs/globalizejs/globalize/number.js',
-                        'libs/globalizejs/globalize/date.js',
                         'libs/purl/purl.js'
                     ]
                 }

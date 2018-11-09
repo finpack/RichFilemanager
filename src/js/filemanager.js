@@ -348,28 +348,6 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
                     langModel.setTranslations(jsonTrans);
 				});
             })
-            .then(function() {
-            	// trim language code to first 2 chars
-				var lang = langModel.getLang().substr(0, 2),
-                    baseUrl = fm.settings.baseUrl;
-
-                return $.when(
-                    $.get(baseUrl + '/libs/cldrjs/cldr-dates/' + lang + '/ca-gregorian.json'),
-                    $.get(baseUrl + '/libs/cldrjs/cldr-numbers/' + lang + '/numbers.json'),
-                    $.get(baseUrl + '/libs/cldrjs/cldr-core/supplemental/likelySubtags.json'),
-                    $.get(baseUrl + '/libs/cldrjs/cldr-core/supplemental/timeData.json'),
-                    $.get(baseUrl + '/libs/cldrjs/cldr-core/supplemental/weekData.json')
-                ).fail(function () {
-                    fm.error('CLDR files for "' + lang + '" language do not exist!');
-                }).then(function () {
-                    // Normalize $.get results, we only need the JSON, not the request statuses.
-                    return [].slice.apply(arguments, [0]).map(function (result) {
-                        return result[0];
-                    });
-                }).then(Globalize.load).then(function () {
-                    globalize = Globalize(lang);
-                });
-            });
 	};
 
 	var includeAssets = function(callback) {
@@ -2993,10 +2971,12 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
         if (!(date instanceof Date) || isNaN(date)) {
             return datetime;
         }
-
-        // Timezone support requires "iana-tz-data" package:
-        // https://github.com/globalizejs/globalize/blob/master/README.md#3-iana-time-zone-data
-        return globalize.formatDate(date, config.formatter.datetime);
+        return date.toLocaleDateString("pl-PL", {
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric', 
+            hour: '2-digit', 
+            minute:'2-digit'});
     };
 
     // Format server-side response single error object
