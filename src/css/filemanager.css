@@ -476,7 +476,7 @@ html[data-useragent*='MSIE 11.0'] .fm-container .fm-header button {
     background-position: center;
 }
 
-.fm-container .searng-topch-box .search-icon {
+.fm-container .search-box .search-icon {
     background-image: url(../img/filemanager/search_dark.png);
 }
 
