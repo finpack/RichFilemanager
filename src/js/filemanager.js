@@ -242,9 +242,6 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
 				return performInitialRequest();
 			})
 			.then(function() {
-				return includeTemplates();
-			})
-			.then(function() {
 				includeAssets(function() {
                     initialize();
 				});
@@ -375,27 +372,10 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
             });
 	};
 
-	var includeTemplates = function() {
-		return $.when(loadTemplate('upload-container'), loadTemplate('upload-item')).done(function(uc, ui) {
-			var tmpl_upload_container = uc[0];
-			var tmpl_upload_item = ui[0];
-
-			$wrapper
-				.append(tmpl_upload_container)
-				.append(tmpl_upload_item);
-		});
-	};
-
 	var includeAssets = function(callback) {
 		var primary = [],
         	secondary = [];
 
-        // theme defined in configuration file
-        primary.push('/themes/' + config.options.theme + '/styles/theme.css');
-
-        if(config.viewer.image.lazyLoad) {
-            primary.push('/libs/lazyload/dist/lazyload.min.js');
-        }
         if(config.customScrollbar.enabled) {
             primary.push('/libs/custom-scrollbar-plugin/jquery.mCustomScrollbar.min.css');
             primary.push('/libs/custom-scrollbar-plugin/jquery.mCustomScrollbar.concat.min.js');
@@ -405,37 +385,6 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
         primary.push(callback);
         loadAssets(primary);
 
-		// Loading CodeMirror if enabled for online edition
-		if(config.editor.enabled) {
-			var editorTheme = config.editor.theme;
-            if (editorTheme && editorTheme !== 'default') {
-                secondary.push('/libs/CodeMirror/theme/' + editorTheme + '.css');
-            }
-            secondary.push('/libs/CodeMirror/lib/codemirror.css');
-            secondary.push('/libs/CodeMirror/lib/codemirror.js');
-            secondary.push('/libs/CodeMirror/addon/selection/active-line.js');
-            secondary.push('/libs/CodeMirror/addon/display/fullscreen.css');
-            secondary.push('/libs/CodeMirror/addon/display/fullscreen.js');
-		}
-
-		// Load Markdown-it, if enabled. For .md to HTML rendering:
-		if(config.viewer.markdownRenderer.enabled) {
-            secondary.push('/src/css/fm-markdown.css');
-            secondary.push('/libs/markdown-it/markdown-it.min.js');
-            secondary.push('/libs/markdown-it/default.min.css');
-            secondary.push('/libs/markdown-it/highlight.min.js');
-            secondary.push('/libs/markdown-it/markdown-it-footnote.min.js');
-            secondary.push('/libs/markdown-it/markdown-it-replace-link.min.js');
-		}
-
-		if(!config.options.browseOnly) {
-			// Loading jquery file upload library
-            secondary.push('/src/js/libs-fileupload.js');
-
-			if(config.upload.multiple) {
-                secondary.push('/libs/jQuery-File-Upload/css/dropzone.css');
-			}
-		}
 
 		if(secondary.length) {
             loadAssets(secondary);
@@ -616,55 +565,6 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
             }
         });
 
-        $fileinfo.contextMenu({
-            selector: '.view-items',
-            zIndex: 10,
-            // wrap options with "build" allows to get item element
-            build: function ($triggerElement, e) {
-                var contextMenuItems = {
-                    createFolder: {
-                    	name: lg('create_folder'),
-						className: 'create-folder'
-                    },
-                    paste: {
-                    	name: lg('clipboard_paste'),
-						className: 'paste',
-                        disabled: function (key, options) {
-							return fmModel.clipboardModel.isEmpty();
-                        }
-                    }
-                };
-
-                if (!fmModel.clipboardModel.enabled() || config.options.browseOnly === true) {
-                    delete contextMenuItems.paste;
-                }
-                if (!hasCapability('createFolder') || config.options.browseOnly === true) {
-                    delete contextMenuItems.createFolder;
-                }
-				// prevent the creation of context menu
-                if ($.isEmptyObject(contextMenuItems)) {
-                    return false;
-				}
-
-                return {
-                    appendTo: '.fm-container',
-                    items: contextMenuItems,
-					reposition: false,
-                    callback: function(itemKey, options) {
-                        switch(itemKey) {
-                            case 'createFolder':
-                                fmModel.headerModel.createFolder();
-                                break;
-
-                            case 'paste':
-                                fmModel.clipboardModel.paste();
-                                break;
-                        }
-                    }
-                }
-            }
-        });
-
 		if(config.extras.extra_js) {
 			for(var i=0; i<config.extras.extra_js.length; i++) {
 				$.ajax({
@@ -685,7 +585,6 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
 		}
 
         prepareFileTree();
-        setupUploader();
         fmModel.treeModel.loadDataNode(fmModel.treeModel.rootNode, true, true);
 
 		// Loading CustomScrollbar if enabled
@@ -1024,101 +923,6 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
                     preview_model.renderer.render(content);
 				}
             });
-            this.applyObject = function(resourceObject) {
-            	if (clipboard) {
-                    clipboard.destroy();
-				}
-
-                model.previewFile(false);
-
-                var filename = resourceObject.attributes.name,
-                    editorObject = {
-                        interactive: false
-                    },
-                    viewerObject = {
-                        type: 'default',
-                        url: null,
-                        options: {}
-                    };
-
-                preview_model.rdo(resourceObject);
-
-                if(isImageFile(filename)) {
-                    viewerObject.type = 'image';
-                    viewerObject.url = createImageUrl(resourceObject, false, true);
-                }
-                if(isAudioFile(filename) && config.viewer.audio.enabled === true) {
-                    viewerObject.type = 'audio';
-                    viewerObject.url = createPreviewUrl(resourceObject, true);
-                }
-                if(isVideoFile(filename) && config.viewer.video.enabled === true) {
-                    viewerObject.type = 'video';
-                    viewerObject.url = createPreviewUrl(resourceObject, true);
-                    viewerObject.options = {
-                        width: config.viewer.video.playerWidth,
-                        height: config.viewer.video.playerHeight
-                    };
-                }
-                // if(isOnlyOfficeFile(filename) && config.viewer.onlyoffice.enabled === true) {
-                //     viewerObject.type = 'onlyoffice';
-                //     var connectorUrl = config.viewer.onlyoffice.connectorUrl || fm.settings.baseUrl + '/connectors/php/onlyoffice/editor.php';
-                //     viewerObject.url = connectorUrl + '?path=' + encodeURIComponent(resourceObject.attributes.path);
-                //     viewerObject.options = {
-                //         width: config.viewer.onlyoffice.editorWidth,
-                //         height: config.viewer.onlyoffice.editorHeight
-                //     };
-                // }
-                if(isOpenDocFile(filename) && config.viewer.opendoc.enabled === true) {
-                    viewerObject.type = 'opendoc';
-                    viewerObject.url = fm.settings.baseUrl + '/libs/ViewerJS/index.html#' + createPreviewUrl(resourceObject, true);
-                    viewerObject.options = {
-                        width: config.viewer.opendoc.readerWidth,
-                        height: config.viewer.opendoc.readerHeight
-                    };
-                }
-                if(isGoogleDocsFile(filename) && config.viewer.google.enabled === true) {
-                    viewerObject.type = 'google';
-                    viewerObject.url = 'https://docs.google.com/viewer?url=' + encodeURIComponent(createPreviewUrl(resourceObject, false)) + '&embedded=true';
-                    viewerObject.options = {
-                        width: config.viewer.google.readerWidth,
-                        height: config.viewer.google.readerHeight
-                    };
-                }
-                if (isIFrameFile(filename) && config.viewer.iframe.enabled === true) {
-                    viewerObject.type = 'iframe';
-                    viewerObject.url = createPreviewUrl(resourceObject, true);
-                    viewerObject.options = {
-                        width: config.viewer.iframe.readerWidth,
-                        height: config.viewer.iframe.readerHeight
-                    };
-				}
-                if ((isCodeMirrorFile(filename) && config.viewer.codeMirrorRenderer.enabled === true) ||
-                    (isMarkdownFile(filename) && config.viewer.markdownRenderer.enabled === true)
-				) {
-                    viewerObject.type = 'renderer';
-                    viewerObject.options = {
-                        is_writable: resourceObject.attributes.writable
-                    };
-                    preview_model.renderer.setRenderer(resourceObject);
-                    editorObject.interactive = preview_model.renderer.renderer().interactive;
-				}
-
-                preview_model.viewer.type(viewerObject.type);
-                preview_model.viewer.url(viewerObject.url);
-                preview_model.viewer.options(viewerObject.options);
-                preview_model.viewer.pureUrl(createCopyUrl(resourceObject));
-                preview_model.viewer.isEditable(isEditableFile(filename) && config.editor.enabled === true);
-                preview_model.editor.isInteractive(editorObject.interactive);
-
-                if (viewerObject.type === 'renderer' || preview_model.viewer.isEditable()) {
-                    previewItem(resourceObject).then(function(content) {
-						preview_model.viewer.content(content);
-						model.previewFile(true);
-                    });
-				} else {
-                    model.previewFile(true);
-				}
-            };
 
             this.afterRender = function() {
                 preview_model.renderer.render(preview_model.viewer.content());
@@ -1434,26 +1238,6 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
                 model.itemsModel.addItems(dataObjects, node.id, true);
             };
 
-			this.nodeRendered = function(elements, node) {
-				// attach context menu
-				$(elements[1]).contextMenu({
-					selector: '.file, .directory',
-					zIndex: 100,
-					// wrap options with "build" allows to get item element
-					build: function ($triggerElement, e) {
-                        node.selected(true);
-
-						return {
-							appendTo: '.fm-container',
-							items: getContextMenuItems(node.rdo),
-							callback: function(itemKey, options) {
-								performAction(itemKey, options, node.rdo, model.fetchSelectedObjects(node));
-							}
-						}
-					}
-				});
-			};
-
 			this.actualizeNodeObject = function(node, oldFolder, newFolder) {
 				var search = new RegExp('^' + oldFolder);
 				var oldPath = node.rdo.id;
@@ -1480,7 +1264,7 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
                 dimensions: resourceObject.attributes.width ? resourceObject.attributes.width + 'x' + resourceObject.attributes.height : null,
                 cssItemClass: (resourceObject.type === 'folder') ? 'directory' : 'file',
                 hiddenByType: false,
-                hiddenBySearch: false
+                hiddenBySearch: false,
             };
 
             this.visible = ko.observable(true);
@@ -1912,28 +1696,6 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
                         items_model.lazyLoad.update();
                     }, 50);
                 }
-
-                // context menu
-				$viewItems.contextMenu({
-					selector: '.file, .directory',
-					zIndex: 100,
-					// wrap options with "build" allows to get item element
-					build: function ($triggerElement, e) {
-						var koItem = ko.dataFor($triggerElement[0]);
-						if(!koItem.selected()) {
-							model.itemsModel.unselectItems(false);
-							koItem.selected(true);
-						}
-
-						return {
-							appendTo: '.fm-container',
-							items: getContextMenuItems(koItem.rdo),
-							callback: function(itemKey, options) {
-								performAction(itemKey, options, koItem.rdo, model.fetchSelectedObjects(koItem));
-							}
-						}
-					}
-				});
 			});
 		};
 
@@ -1958,8 +1720,12 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
                 imageUrl: createImageUrl(resourceObject, true, true),
                 previewWidth: previewWidth,
                 hiddenByType: false,
-            	hiddenBySearch: false
+            	hiddenBySearch: false,
+                displayName: (resourceObject.attributes.name.substr(resourceObject.attributes.name.length - 1) !== '/') ?
+                    resourceObject.attributes.name : resourceObject.attributes.name.slice(0, resourceObject.attributes.name.length - 1)
+
             };
+
             this.visible = ko.observable(true);
             this.selected = ko.observable(false);
             this.dragHovered = ko.observable(false);
@@ -2821,7 +2587,6 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
 
                 editor_model.instance = cm;
 
-                includeAssets(extension);
             };
 
             function drawContent(content) {
@@ -2832,83 +2597,6 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
                 	editor_model.instance.refresh();
                 }, 0);
             }
-
-            function includeAssets(extension) {
-                var assets = [],
-                	currentMode = 'default';
-
-                // highlight code according to extension file
-                if (config.editor.codeHighlight) {
-                    if (extension === 'js') {
-                        assets.push('/libs/CodeMirror/mode/javascript/javascript.js');
-                        currentMode = 'javascript';
-                    }
-                    if (extension === 'css') {
-                        assets.push('/libs/CodeMirror/mode/css/css.js');
-                        currentMode = 'css';
-                    }
-                    if (extension === 'html') {
-                        assets.push('/libs/CodeMirror/mode/xml/xml.js');
-                        currentMode = 'text/html';
-                    }
-                    if (extension === 'xml') {
-                        assets.push('/libs/CodeMirror/mode/xml/xml.js');
-                        currentMode = 'application/xml';
-                    }
-                    if (extension === 'php') {
-                        assets.push('/libs/CodeMirror/mode/htmlmixed/htmlmixed.js');
-                        assets.push('/libs/CodeMirror/mode/xml/xml.js');
-                        assets.push('/libs/CodeMirror/mode/javascript/javascript.js');
-                        assets.push('/libs/CodeMirror/mode/css/css.js');
-                        assets.push('/libs/CodeMirror/mode/clike/clike.js');
-                        assets.push('/libs/CodeMirror/mode/php/php.js');
-                        currentMode = 'application/x-httpd-php';
-                    }
-                    if (extension === 'java') {
-                        assets.push('/libs/CodeMirror/mode/clike/clike.js');
-                        currentMode = 'text/x-java';
-                    }
-                    if (extension === 'sql') {
-                        assets.push('/libs/CodeMirror/mode/sql/sql.js');
-                        currentMode = 'text/x-mysql';
-                    }
-                    if (extension === 'md') {
-                        assets.push('/libs/CodeMirror/addon/mode/overlay.js');
-                        assets.push('/libs/CodeMirror/mode/xml/xml.js');
-                        assets.push('/libs/CodeMirror/mode/markdown/markdown.js');
-                        assets.push('/libs/CodeMirror/mode/gfm/gfm.js');
-                        assets.push('/libs/CodeMirror/mode/javascript/javascript.js');
-                        assets.push('/libs/CodeMirror/mode/css/css.js');
-                        assets.push('/libs/CodeMirror/mode/htmlmixed/htmlmixed.js');
-                        assets.push('/libs/CodeMirror/mode/clike/clike.js');
-                        assets.push('/libs/CodeMirror/mode/shell/shell.js');
-                        assets.push('/libs/CodeMirror/mode/meta.js');
-                        currentMode = 'gfm';
-                    }
-                    if (extension === 'sh') {
-                        assets.push('/libs/CodeMirror/addon/mode/overlay.js');
-                        assets.push('/libs/CodeMirror/mode/markdown/markdown.js');
-                        assets.push('/libs/CodeMirror/mode/gfm/gfm.js');
-                        assets.push('/libs/CodeMirror/mode/javascript/javascript.js');
-                        assets.push('/libs/CodeMirror/mode/css/css.js');
-                        assets.push('/libs/CodeMirror/mode/htmlmixed/htmlmixed.js');
-                        assets.push('/libs/CodeMirror/mode/clike/clike.js');
-                        assets.push('/libs/CodeMirror/mode/meta.js');
-                        assets.push('/libs/CodeMirror/mode/shell/shell.js');
-                        currentMode = 'shell';
-                    }
-                }
-
-                if(assets.length) {
-                    assets.push(function() {
-                    	// after all required assets are loaded
-                        editor_model.mode(currentMode);
-					});
-                    loadAssets(assets);
-                } else {
-                    editor_model.mode(currentMode);
-				}
-			}
 		};
 
         var DragAndDropModel = function() {
@@ -4378,39 +4066,6 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
 		}
     }
 
-	// Options for context menu plugin
-	function getContextMenuItems(resourceObject) {
-        var clipboardDisabled = !fmModel.clipboardModel.enabled(),
-            contextMenuItems = {
-                select: {name: lg('action_select'), className: 'select'},
-                download: {name: lg('action_download'), className: 'download'},
-                rename: {name: lg('action_rename'), className: 'rename'},
-                move: {name: lg('action_move'), className: 'move'},
-                separator1: '-----',
-                copy: {name: lg('clipboard_copy'), className: 'copy'},
-                cut: {name: lg('clipboard_cut'), className: 'cut'},
-                delete: {name: lg('action_delete'), className: 'delete'},
-                extract: {name: lg('action_extract'), className: 'extract'},
-                copyUrl: {name: lg('copy_to_clipboard'), className: 'copy-url'}
-            };
-
-		if(!isObjectCapable(resourceObject, 'download')) delete contextMenuItems.download;
-        if(!isObjectCapable(resourceObject, 'select') || !hasContext()) delete contextMenuItems.select;
-        if(!isObjectCapable(resourceObject, 'rename') || config.options.browseOnly === true) delete contextMenuItems.rename;
-		if(!isObjectCapable(resourceObject, 'delete') || config.options.browseOnly === true) delete contextMenuItems.delete;
-		if(!isObjectCapable(resourceObject, 'extract') || config.options.browseOnly === true) delete contextMenuItems.extract;
-		if(!isObjectCapable(resourceObject, 'copy') || config.options.browseOnly === true || clipboardDisabled) delete contextMenuItems.copy;
-		if(!isObjectCapable(resourceObject, 'move') || config.options.browseOnly === true || clipboardDisabled) {
-            delete contextMenuItems.cut;
-            delete contextMenuItems.move;
-		}
-		if(clipboardDisabled){
-		    delete contextMenuItems.copyUrl
-		}
-
-		return contextMenuItems
-	}
-
 	// Binds contextual menu to items in list and grid views.
 	var performAction = function(action, options, targetObject, selectedObjects) {
 		// suppose that target object is part of selected objects while multiple selection
@@ -4473,463 +4128,6 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
 				break;
 		}
 	};
-
-	// Handling file uploads
-	var setupUploader = function() {
-		if(config.options.browseOnly) {
-			return false;
-		}
-
-		// Multiple Uploads
-		if(config.upload.multiple) {
-			$uploadButton.unbind().click(function() {
-				if (!hasCapability('upload')) {
-					fm.error(lg('NOT_ALLOWED'));
-					return false;
-				}
-
-				var allowedFileTypes = null,
-					currentPath = fmModel.currentPath(),
-					templateContainer = tmpl('tmpl-fileupload-container', {
-						folder: lg('current_folder') + currentPath,
-						info: lg('upload_files_number_limit').replace('%s', config.upload.maxNumberOfFiles) + ' ' + lg('upload_file_size_limit').replace('%s', formatBytes(config.upload.fileSizeLimit, true)),
-						lang: langModel.getTranslations()
-					});
-
-				if(config.security.extensions.policy === 'ALLOW_LIST') {
-					allowedFileTypes = new RegExp('(\\.|\\/)(' + config.security.extensions.restrictions.join('|') + ')$', 'i');
-				}
-
-				fm.dialog({
-					message: templateContainer,
-					width: 'auto',
-					buttons: [{
-						type: 'ok',
-						label: lg('action_upload'),
-						autoClose: false,
-						click: function(e, ui) {
-							if($dropzone.children('.upload-item').length > 0) {
-								$dropzone.find('.button-start').trigger('click');
-							} else {
-								fm.error(lg('upload_choose_file'));
-							}
-						}
-					},{
-						label: lg('action_select'),
-						closeOnClick: false,
-						click: function(e, ui) {
-							$('#fileupload', $uploadContainer).trigger('click');
-						}
-					},{
-						type: 'cancel',
-						label: lg('close')
-					}]
-				});
-
-				var $uploadContainer = $('.fm-fileupload-container'),
-					$dropzone = $('.dropzone', $uploadContainer),
-					$dropzoneWrapper = $('.dropzone-wrapper', $uploadContainer),
-					$totalProgressBar = $('#total-progress', $uploadContainer).children();
-
-				if(config.customScrollbar.enabled) {
-					$dropzoneWrapper.mCustomScrollbar({
-						theme: config.customScrollbar.theme,
-						scrollButtons: {
-							enable: config.customScrollbar.button
-						},
-						advanced: {
-							autoExpandHorizontalScroll: true,
-							updateOnContentResize: true
-						},
-						callbacks: {
-							onOverflowY: function() {
-								$dropzoneWrapper.find('.mCSB_container').css({
-									'margin-right': $dropzoneWrapper.find('.mCSB_scrollTools').width()
-								});
-							},
-							onOverflowYNone: function() {
-								$dropzoneWrapper.find('.mCSB_container').css({
-									'margin-right': 'auto'
-								});
-							}
-						},
-						axis: 'y'
-					});
-				}
-
-				$dropzoneWrapper.on('click', function(e) {
-					if(e.target === this || $(e.target).parent()[0] === this || e.target === $dropzone[0] || $(e.target).parent().hasClass('default-message')) {
-						$('#fileupload', $uploadContainer).trigger('click');
-					}
-				});
-
-				/**
-				 * Start uploading process.
-				 */
-				$dropzone.on('click', '.button-start', function(e) {
-					var $target = $(this);
-					var $buttons = $target.parent().parent();
-					var data = $buttons.data();
-
-					data.submit();
-					$target.remove();
-				});
-
-				/**
-				 * Abort uploading process.
-				 */
-				$dropzone.on('click', '.button-abort', function(e) {
-					var $target = $(this),
-						$buttons = $target.parent().parent(),
-						data = $buttons.data(),
-						$node = data.files[0].context;
-
-					data.abort();
-					$node.find('.error-message').text(lg('upload_aborted'));
-					$node.addClass('aborted');
-				});
-
-				/**
-				 * Resume uploading if at least one chunk was uploaded.
-				 * Otherwise start upload from the very beginning of file.
-				 */
-				$dropzone.on('click', '.button-resume', function(e) {
-					var $target = $(this),
-						$buttons = $target.parent().parent(),
-						data = $buttons.data(),
-						file = data.files[0];
-
-					function resumeUpload(data) {
-						$.blueimp.fileupload.prototype.options.add.call($('#fileupload')[0], e, data);
-						data.submit();
-					}
-
-					if(file.chunkUploaded) {
-						var targetPath = currentPath + file.serverName;
-                        getItemInfo(targetPath).then(function(response) {
-                            if(response.data) {
-                                data.uploadedBytes = Number(response.data.attributes.size);
-                                if(!data.uploadedBytes) {
-                                    file.chunkUploaded = undefined;
-                                }
-                                resumeUpload(data);
-                            }
-                        });
-					} else {
-						resumeUpload(data);
-					}
-				});
-
-				/**
-				 * Remove file from upload query.
-				 * Also remove uploaded file chunks if were uploaded.
-				 */
-				$dropzone.on('click', '.button-remove', function(e) {
-					var $target = $(this),
-						$buttons = $target.parent().parent(),
-						data = $buttons.data(),
-						file = data.files[0];
-
-					if(file.chunkUploaded) {
-						deleteItem(currentPath + file.serverName);
-					}
-
-					$target.closest('.upload-item').remove();
-					updateDropzoneView();
-				});
-
-				$dropzone.on('click', '.button-info', function(e) {
-					var $target = $(this);
-					var $node = $target.closest('.upload-item');
-
-					if($node.hasClass('error')) {
-						var $message = $node.find('.error-message');
-						fm.error($message.text());
-					}
-				});
-
-                var updateDropzoneView = function () {
-                    if ($dropzone.children('.upload-item').length > 0) {
-                        $dropzone.addClass('started');
-                    } else {
-                        $dropzone.removeClass('started');
-                    }
-                };
-
-                var shownExtensions = fmModel.filterModel.getExtensions();
-                if (shownExtensions) {
-                    $('#fileupload').attr('accept', shownExtensions.map(function (el) {
-                        return '.' + el;
-                    }).join());
-                }
-
-                $('#fileupload', $uploadContainer)
-					.fileupload({
-						autoUpload: false,
-						sequentialUploads: true,
-						dataType: 'json',
-						dropZone: $dropzone,
-						maxChunkSize: config.upload.chunkSize,
-						url: buildConnectorUrl(),
-						paramName: config.upload.paramName,
-						singleFileUploads: true,
-						formData: extendRequestParams('POST', {
-                            mode: 'upload',
-                            path: currentPath
-                        }),
-						// validation
-						// maxNumberOfFiles works only for single "add" call when "singleFileUploads" is set to "false"
-						maxNumberOfFiles: config.upload.maxNumberOfFiles,
-						acceptFileTypes: allowedFileTypes,
-						maxFileSize: config.upload.fileSizeLimit,
-						messages: {
-							maxNumberOfFiles: lg('upload_files_number_limit').replace('%s', config.upload.maxNumberOfFiles),
-							acceptFileTypes: lg('upload_file_type_invalid'),
-							maxFileSize: lg('upload_file_too_big') + ' ' + lg('upload_file_size_limit').replace('%s', formatBytes(config.upload.fileSizeLimit, true))
-						},
-						// image preview options
-						previewMaxHeight: 120,
-						previewMaxWidth: 120,
-						previewCrop: true
-					})
-
-					.on('fileuploadadd', function(e, data) {
-						var $items = $dropzone.children('.upload-item');
-						$.each(data.files, function (index, file) {
-							// skip selected files if total files number exceed "maxNumberOfFiles"
-							if($items.length >= config.upload.maxNumberOfFiles) {
-								fm.error(lg('upload_files_number_limit').replace('%s', config.upload.maxNumberOfFiles), {
-									logClass: 'fileuploadadd',
-									unique: true
-								});
-								return false;
-							}
-							// to display in item template
-							file.formattedSize = formatBytes(file.size);
-							var $template = $(tmpl('tmpl-upload-item', {
-								file: file,
-								lang: langModel.getTranslations(),
-								imagesPath: fm.settings.baseUrl + '/libs/jQuery-File-Upload/img'
-							}));
-							file.context = $template;
-							$template.find('.buttons').data(data);
-							$template.appendTo($dropzone);
-						});
-						updateDropzoneView();
-					})
-
-					.on('fileuploadsend', function(e, data) {
-                        if (fm.settings.callbacks.beforeSendRequest(data.type, data.formData) === false) {
-                            $.each(data.files, function (index, file) {
-                                var $node = file.context;
-                                $node.find('.error-message').text(lg('NOT_ALLOWED'));
-                                $node.removeClass('added process').addClass('error');
-                            });
-                            return false;
-                        }
-
-						$.each(data.files, function (index, file) {
-							var $node = file.context;
-							$node.removeClass('added aborted error').addClass('process');
-
-							// workaround to handle a case while chunk uploading when you may press abort button after
-							// uploading is done, but right before "fileuploaddone" event is fired, and try to resume upload
-							if(file.chunkUploaded && (data.total === data.uploadedBytes)) {
-								$node.remove();
-							}
-						});
-					})
-
-					.on('fileuploadfail', function(e, data) {
-                        var error, xhr = data.jqXHR;
-
-                        // handle server-side errors
-                        if ($.isPlainObject(xhr.responseJSON) && xhr.responseJSON.errors) {
-                            error = formatServerError(xhr.responseJSON.errors[0]);
-                        } else {
-                            error = lg('upload_failed')
-						}
-
-						$.each(data.files, function (index, file) {
-							var $node = file.context;
-                            $node.removeClass('added process').addClass('error');
-                            $node.find('.error-message').text(error);
-                            $node.find('.button-start').remove();
-						});
-					})
-
-					.on('fileuploaddone', function(e, data) {
-						var response = data.result;
-						$.each(data.files, function (index, file) {
-                            if(response && response.data && response.data[index]) {
-                                // remove file preview item on success upload
-                                file.context.remove();
-							}
-						});
-					})
-
-					.on('fileuploadalways', function(e, data) {
-						var response = data.result;
-						$.each(data.files, function (index, file) {
-							if(response && response.data && response.data[index]) {
-								var resourceObject = response.data[index];
-								fmModel.removeElement(resourceObject);
-								fmModel.addElements(resourceObject, fmModel.currentPath());
-							}
-						});
-
-						var $items = $dropzone.children('.upload-item');
-						// all files in queue are processed
-						if($items.filter('.added').length === 0 && $items.filter('.process').length === 0) {
-							// all files were successfully uploaded
-							if($items.length === 0) {
-								alertify.clearDialogs();
-
-								if (config.options.showConfirmation) {
-									fm.success(lg('upload_successful_files'));
-								}
-							}
-							// errors occurred
-							if($items.filter('.error').length) {
-								fm.error(lg('upload_partially') + "<br>" + lg('upload_failed_details'));
-							}
-						}
-						updateDropzoneView();
-					})
-
-					.on('fileuploadchunkdone', function (e, data) {
-						var response = data.result;
-						$.each(data.files, function (index, file) {
-							if(response.data && response.data[index]) {
-								var resourceObject = response.data[index];
-								fmModel.removeElement(resourceObject);
-								fmModel.addElements(resourceObject, fmModel.currentPath());
-
-								// get filename from server, it may differ from original
-								file.serverName = resourceObject.attributes.name;
-								// mark that file has uploaded chunk(s)
-								file.chunkUploaded = 1;
-							}
-						});
-					})
-
-					.on('fileuploadprocessalways', function(e, data) {
-						$.each(data.files, function (index, file) {
-							var $node = file.context;
-							// file wasn't added to queue (due to config.upload.maxNumberOfFiles limit e.g.)
-							if(typeof $node === 'undefined') {
-								return;
-							}
-							// show preview for image file
-							if (file.preview) {
-								$node.find('.image').append(file.preview);
-								$node.find('.preview').removeClass('file-preview').addClass('image-preview');
-							}
-							// handle client-side error
-							if (file.error) {
-								$node.removeClass('added process').addClass('error');
-								$node.find('.error-message').text(file.error);
-								$node.find('.button-start').remove();
-							}
-						});
-					})
-
-					.on('fileuploadprogress', function (e, data) {
-						$.each(data.files, function (index, file) {
-							// fill progress bar for single item
-							var $node = file.context,
-								progress = parseInt(data.loaded / data.total * 100, 10);
-							$node.find('.progress-bar').css('width', progress + '%');
-						});
-					})
-
-					.on('fileuploadprogressall', function (e, data) {
-						// fill total progress bar
-						var progress = parseInt(data.loaded / data.total * 100, 10);
-						$totalProgressBar.css('width', progress + '%');
-					});
-			});
-
-		// Simple Upload
-		} else {
-            $uploadButton.unbind().click(function() {
-                if(!hasCapability('upload')) {
-                    fm.error(lg('NOT_ALLOWED'));
-                    return false;
-                }
-
-                $('#newfile').trigger('click');
-			});
-
-			$uploader
-				.fileupload({
-					autoUpload: true,
-					dataType: 'json',
-					url: buildConnectorUrl(),
-					paramName: config.upload.paramName,
-					maxChunkSize: config.upload.chunkSize
-				})
-
-				.on('fileuploadadd', function(e, data) {
-					$uploadButton.data(data);
-				})
-
-				.on('fileuploadsubmit', function(e, data) {
-                    data.formData = extendRequestParams('POST', {
-                        mode: 'upload',
-                        path: fmModel.currentPath()
-                    });
-					$uploadButton.addClass('loading').prop('disabled', true);
-					$uploadButton.children('span').text(lg('loading_data'));
-				})
-
-                .on('fileuploadsend', function(e, data) {
-                    if (fm.settings.callbacks.beforeSendRequest(data.type, data.formData) === false) {
-                        fm.error(lg('NOT_ALLOWED'));
-                        return false;
-                    }
-                })
-
-				.on('fileuploadalways', function(e, data) {
-					$uploadButton.removeData().removeClass('loading').prop('disabled', false);
-					$uploadButton.children('span').text(lg('action_upload'));
-					var response = data.result;
-
-					if(response && response.data) {
-						var resourceObject = response.data[0];
-						fmModel.removeElement(resourceObject);
-						fmModel.addElements(resourceObject, fmModel.currentPath());
-
-						if(config.options.showConfirmation) {
-							fm.success(lg('upload_successful_file'));
-						}
-					}
-				})
-
-				.on('fileuploadchunkdone', function (e, data) {
-					var response = data.result;
-					if(response.data && response.data[0]) {
-						var resourceObject = response.data[0];
-						fmModel.removeElement(resourceObject);
-						fmModel.addElements(resourceObject, fmModel.currentPath());
-					}
-				})
-
-				.on('fileuploadfail', function(e, data) {
-                    var error, xhr = data.jqXHR;
-
-                    // handle server-side errors
-                    if ($.isPlainObject(xhr.responseJSON) && xhr.responseJSON.errors) {
-                        error = formatServerError(xhr.responseJSON.errors[0]);
-                    } else {
-                        error = lg('upload_failed')
-                    }
-
-					fm.error(error);
-				});
-		}
-	};
-
 	// call the "constructor" method
 	construct();
 
