@@ -351,22 +351,10 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
 	};
 
 	var includeAssets = function(callback) {
-		var primary = [],
-        	secondary = [];
-
-        if(config.customScrollbar.enabled) {
-            primary.push('/libs/custom-scrollbar-plugin/jquery.mCustomScrollbar.min.css');
-            primary.push('/libs/custom-scrollbar-plugin/jquery.mCustomScrollbar.concat.min.js');
-        }
-
+		var primary = [];
         // add callback on loaded assets and inject primary ones
         primary.push(callback);
         loadAssets(primary);
-
-
-		if(secondary.length) {
-            loadAssets(secondary);
-		}
 	};
 
 	var initialize = function () {
@@ -2204,7 +2192,19 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
                 }
             }
         };
-
+        var UpdateModel = function() {
+            this.sendUpdate = function () {
+                var interval = config.update.interval
+                var currRequest = new Date()
+                if(this.lastRequest && currRequest - this.lastRequest < interval) {
+                    console.log('minimal interval between updates is ' + interval + 'ms')
+                } else {
+                    buildAjaxRequest('GET', {mode: 'update'})
+                    this.lastRequest = currRequest
+                }
+            };
+            
+        };
 		var ClipboardModel = function() {
 			var cbMode = null,
                 cbObjects = [],
@@ -2352,7 +2352,7 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
 					}
                 };
 			};
-		};
+        };
 
         var RenderModel = function() {
             var $containerElement,
@@ -2730,7 +2730,8 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
 		this.headerModel = new HeaderModel();
 		this.summaryModel = new SummaryModel();
 		this.filterModel = new FilterModel();
-		this.searchModel = new SearchModel();
+        this.searchModel = new SearchModel();
+        this.updateModel = new UpdateModel();
 		this.clipboardModel = new ClipboardModel();
 		this.breadcrumbsModel = new BreadcrumbsModel();
         this.ddModel = new DragAndDropModel();
