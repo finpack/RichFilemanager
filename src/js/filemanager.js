@@ -2193,12 +2193,17 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
             }
         };
         var UpdateModel = function() {
+            var update_model = this
+            this.messageVisible = ko.observable(false)
+
             this.sendUpdate = function () {
                 var interval = config.update.interval
                 var currRequest = new Date()
                 if(this.lastRequest && currRequest - this.lastRequest < interval) {
+                    update_model.messageVisible(true)
                     console.log('minimal interval between updates is ' + interval + 'ms')
                 } else {
+                    update_model.messageVisible(false)
                     buildAjaxRequest('GET', {mode: 'update'})
                     this.lastRequest = currRequest
                 }
