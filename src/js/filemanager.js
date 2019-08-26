@@ -1005,7 +1005,7 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
 						return (fullexpandedFolder.indexOf(node.id) === 0);
 					}, parentNode);
 
-					if (node) {
+					if (node && node.id !== parentNode.id) {
                         config.filetree.expandSpeed = 10;
                         tree_model.loadDataNode(node, false, true);
 					} else {
