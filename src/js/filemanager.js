@@ -351,22 +351,10 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
 	};
 
 	var includeAssets = function(callback) {
-		var primary = [],
-        	secondary = [];
-
-        if(config.customScrollbar.enabled) {
-            primary.push('/libs/custom-scrollbar-plugin/jquery.mCustomScrollbar.min.css');
-            primary.push('/libs/custom-scrollbar-plugin/jquery.mCustomScrollbar.concat.min.js');
-        }
-
+		var primary = [];
         // add callback on loaded assets and inject primary ones
         primary.push(callback);
         loadAssets(primary);
-
-
-		if(secondary.length) {
-            loadAssets(secondary);
-		}
 	};
 
 	var initialize = function () {
@@ -747,6 +735,7 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
         this.previewModel = ko.observable(null);
         this.currentLang = langModel.getLang();
         this.lg = langModel.getTranslations();
+            this.isCKEditor = _url_.param('CKEditor') != null;
 
         this.previewFile.subscribe(function (enabled) {
             if (!enabled) {
@@ -1443,6 +1432,11 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
                 $.each(resourceObjects, function(i, resourceObject) {
                     items.push(items_model.createSearchItem(resourceObject));
                 });
+    
+                    if(!fmModel.isCKEditor){
+                        items = items.filter(function(item) {return !item.id.includes('załączniki aktualności')})
+                    }
+    
                 return items;
             };
 
@@ -1458,6 +1452,10 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
                 $.each(resourceObjects, function(i, resourceObject) {
                     items.push(items_model.createItem(resourceObject));
                 });
+    
+                    if(!fmModel.isCKEditor){
+                        items = items.filter(function(item) {return !item.id.includes('załączniki aktualności')})
+                    }
                 return items;
             };
 
@@ -2204,7 +2202,24 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
                 }
             }
         };
+        var UpdateModel = function() {
+            var update_model = this
+            this.messageVisible = ko.observable(false)
 
+            this.sendUpdate = function () {
+                var interval = config.update.interval
+                var currRequest = new Date()
+                if(this.lastRequest && currRequest - this.lastRequest < interval) {
+                    update_model.messageVisible(true)
+                    console.log('minimal interval between updates is ' + interval + 'ms')
+                } else {
+                    update_model.messageVisible(false)
+                    buildAjaxRequest('GET', {mode: 'update'})
+                    this.lastRequest = currRequest
+                }
+            };
+            
+        };
 		var ClipboardModel = function() {
 			var cbMode = null,
                 cbObjects = [],
@@ -2352,7 +2367,7 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
 					}
                 };
 			};
-		};
+        };
 
         var RenderModel = function() {
             var $containerElement,
@@ -2730,7 +2745,8 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
 		this.headerModel = new HeaderModel();
 		this.summaryModel = new SummaryModel();
 		this.filterModel = new FilterModel();
-		this.searchModel = new SearchModel();
+        this.searchModel = new SearchModel();
+        this.updateModel = new UpdateModel();
 		this.clipboardModel = new ClipboardModel();
 		this.breadcrumbsModel = new BreadcrumbsModel();
         this.ddModel = new DragAndDropModel();
@@ -3884,12 +3900,16 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
 	// Starts file download process.
 	// Called by clicking the "Download" button in detail views
 	// or choosing the "Download" contextual menu item in list views.
-	var downloadItem = function(resourceObject) {
+        var buildDownloadLink = function(resourceObject) {
 		var queryParams = {
 			mode: 'download',
 			path: resourceObject.id
 		};
-        window.open(buildConnectorUrl(extendRequestParams('GET', queryParams)));
+                return buildConnectorUrl(extendRequestParams('GET', queryParams));
+	};
+
+        var downloadItem = function(resourceObject) {
+            window.open(buildDownloadLink(resourceObject));
 	};
 
 	// Save CodeMirror editor content to file
@@ -4038,7 +4058,25 @@ $.richFilemanagerPlugin = function(element, pluginOptions)
 			return false;
 		}
 		if(resourceObject.type === 'file') {
-            downloadItem(resourceObject)
+                if(_url_.param('CKEditor')) {
+                    window.opener.CKEDITOR.tools.callFunction(purl().param('CKEditorFuncNum'), buildDownloadLink(resourceObject)
+                    , function() {
+                        var dialog = this.getDialog();
+                        if(dialog.getContentElement('info', 'linkDisplayText'))
+                            dialog.getContentElement('info', 'linkDisplayText').setValue(resourceObject.attributes.name);
+                        else
+                            if (dialog.getContentElement('Link', 'txtUrl') && dialog.getContentElement('Link', 'cmbTarget')) {
+                                url = buildDownloadLink(resourceObject)
+                                dialog.getContentElement('Link', 'txtUrl').setValue(url);
+                                dialog.getContentElement('Link', 'cmbTarget').setValue('_blank');
+                            }
+                    }
+                    );
+                    window.close();
+                } else {
+                    downloadItem(resourceObject);
+                }
+    
 		}
 		if(resourceObject.type === 'folder' || resourceObject.type === 'parent') {
             fmModel.previewFile(false);
