@@ -696,7 +696,7 @@ html[data-useragent*='MSIE 11.0'] .fm-container .fm-header button {
     background-repeat: no-repeat;
     background-position: center;
     text-align: center;
-    padding-top: 2px;
+    padding-top: 3px;
     margin-right: 10px;
 }
 .fm-container .view-items .list .list-icon span {
@@ -1106,6 +1106,46 @@ html[data-useragent*='MSIE 11.0'] .fm-container .fm-header button {
     color: #428BCA;
     background-color: #F5F5F5;
 }
+
+.fm-container .breadcrumbs .update-message-button {
+    float: right;
+}
+
+.fm-container .breadcrumbs .update-message-button .update-button-container {
+    float: none;
+}
+.fm-container .breadcrumbs .update-message-button .update-message{
+    font-size: 12px;
+    color: #666666d6;
+    font-weight: bold;
+}
+
+.fm-container .breadcrumbs .update-message-button .update-button-container .update-button {
+    float: right;
+    display: block;
+    background-color: #66666624;
+    border: 1px solid;
+    float: right;
+    margin-right: 5px;
+    padding-right: 5px;
+    font-weight: bold;
+    color: #666666;
+    font-size: 14px;
+    border-radius: 5px;
+    border-color: #6666665c;
+
+}
+
+.fm-container .breadcrumbs .update-icon {
+    display: block;
+    width: 16px;
+    height: 19px;
+    background-repeat: no-repeat;
+    background-position-x: center;
+    background-image: url(../img/filemanager/update.png);
+    background-position-y: bottom;
+}
+
 
 .fm-container .fm-header .buttons-panel {
     margin: 0px;
